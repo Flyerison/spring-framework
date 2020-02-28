@@ -71,12 +71,22 @@ import org.springframework.util.StringUtils;
 public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements SingletonBeanRegistry {
 
 	/** Cache of singleton objects: bean name to bean instance. */
+	/**
+	 * 用于存放完全初始化好的bean  bean获取时直接从这里取出 bean可直接使用
+	 */
 	private final Map<String, Object> singletonObjects = new ConcurrentHashMap<>(256);
 
 	/** Cache of singleton factories: bean name to ObjectFactory. */
+	/**
+	 * 存放bean工厂对象 解决循环依赖
+	 */
 	private final Map<String, ObjectFactory<?>> singletonFactories = new HashMap<>(16);
 
 	/** Cache of early singleton objects: bean name to bean instance. */
+	/**
+	 * 存放原始的bean对象用于解决循环依赖，注意：存到里面的对象还没有被填充属性
+	 * 提前引用仓库  暴露被循环依赖的对象的指针引用
+	 */
 	private final Map<String, Object> earlySingletonObjects = new HashMap<>(16);
 
 	/** Set of registered singletons, containing the bean names in registration order. */
@@ -132,9 +142,22 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 	 */
 	protected void addSingleton(String beanName, Object singletonObject) {
 		synchronized (this.singletonObjects) {
+			/**
+			 * 终于将对象放到了 singletonObjects 中了 也就是"容器"里 描述不是很准确 大致那意思
+			 * 以后需要获取对象 直接就可以从这里取了 不用再创建
+			 */
 			this.singletonObjects.put(beanName, singletonObject);
+			/**
+			 * 对象都创建完成 放到了 singletonObjects  单例工厂也就没用了 删了
+			 */
 			this.singletonFactories.remove(beanName);
+			/**
+			 * 同理 没用了 删掉
+			 */
 			this.earlySingletonObjects.remove(beanName);
+			/**
+			 * 将 beanName 添加到list中 存放所有已经创建好的beanName
+			 */
 			this.registeredSingletons.add(beanName);
 		}
 	}
@@ -150,9 +173,13 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 	protected void addSingletonFactory(String beanName, ObjectFactory<?> singletonFactory) {
 		Assert.notNull(singletonFactory, "Singleton factory must not be null");
 		synchronized (this.singletonObjects) {
+			// 事先不存在beanName创建完成的对象
 			if (!this.singletonObjects.containsKey(beanName)) {
+				// 工厂类注册 注册创建bean的工厂类  后面会用到
 				this.singletonFactories.put(beanName, singletonFactory);
+				// 删除 事先引用
 				this.earlySingletonObjects.remove(beanName);
+				// 标明 beanName 被注册
 				this.registeredSingletons.add(beanName);
 			}
 		}
@@ -171,18 +198,45 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 	 * @param beanName the name of the bean to look for
 	 * @param allowEarlyReference whether early references should be created or not
 	 * @return the registered singleton object, or {@code null} if none found
+	 * allowEarlyReference 是否该bean应该被放到提前引用仓库中 跟Spring循环依赖的解决策略有关
 	 */
 	@Nullable
 	protected Object getSingleton(String beanName, boolean allowEarlyReference) {
+		/**
+		 * 缓存获取单例对象 刚开始嘛 return null
+		 * 第二次getSingleton时：依赖对象还没有开始创建 所以还是null return掉
+		 * 第三次 尝试获取单例对象 但是没有 singletonObjects 存放的是完全创建好的对象 这时候还没被依赖对象卡在递归上 所以get的是null
+		 * 		但是该对象已经开始被创建 所以会进入到加锁逻辑里
+		 * 第四次 这里 allowEarlyReference = false 最底下的依赖对象已经创建并且属性注入完毕
+		 *
+		 */
 		Object singletonObject = this.singletonObjects.get(beanName);
+		// isSingletonCurrentlyInCreation：单例对象是否正在创建（循环依赖递归导致 第一次就是false 刚开始创建没有正在创建）
+		// 本质是判断Set集合中有没有beanName
 		if (singletonObject == null && isSingletonCurrentlyInCreation(beanName)) {
 			synchronized (this.singletonObjects) {
+				// 提前创建的对象存放地点 null 往下走
 				singletonObject = this.earlySingletonObjects.get(beanName);
+				/**
+				 * 循环依赖 1 对象已经开始创建 但是还没有被放到 提前引用仓库中 + 应该放到提前引用 则进入方法体
+				 *	2 对象已经开始创建 也没有被放到提前引用库中 + 不应该放到提前引用库 中 直接返回
+				 *
+				 * 分析下 allowEarlyReference = false 的情况
+				 * 其中之一是 对象已经实例化 + 属性注入（对象指针已经指向注入的对象 哪怕其还没创建完毕）+ 初始化完成
+				 * 就不需要再放到 涉及循环依赖的提前引用库了 该对象已经可以看作正常使用了
+				 */
 				if (singletonObject == null && allowEarlyReference) {
+					/**
+					 * 存放了单例对象创建的工厂 前面一个beanName放入了一个封装好的创建工厂类 这时候取出来
+					 * @see org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory#doCreateBean
+					 */
 					ObjectFactory<?> singletonFactory = this.singletonFactories.get(beanName);
 					if (singletonFactory != null) {
+						// 将实例化好的对象通过工厂方法拿出来 注意这里的对象也是没有属性注入的
 						singletonObject = singletonFactory.getObject();
+						// 到这里就是说明 循环依赖 被依赖对象的获取时候了  放入提前引用仓库
 						this.earlySingletonObjects.put(beanName, singletonObject);
+						// 没有用了 删掉
 						this.singletonFactories.remove(beanName);
 					}
 				}
@@ -202,8 +256,12 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 	public Object getSingleton(String beanName, ObjectFactory<?> singletonFactory) {
 		Assert.notNull(beanName, "Bean name must not be null");
 		synchronized (this.singletonObjects) {
+			/**
+			 * 依旧为null
+			 */
 			Object singletonObject = this.singletonObjects.get(beanName);
 			if (singletonObject == null) {
+				// 刚进来还是为false 没有进行实例化创建
 				if (this.singletonsCurrentlyInDestruction) {
 					throw new BeanCreationNotAllowedException(beanName,
 							"Singleton bean creation not allowed while singletons of this factory are in destruction " +
@@ -212,6 +270,12 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 				if (logger.isDebugEnabled()) {
 					logger.debug("Creating shared instance of singleton bean '" + beanName + "'");
 				}
+				/**
+				 * 实例化创建之前的操作
+				 * 将beanName添加到singletonsCurrentlyInCreation的set集合当中
+				 *
+				 * singletonsCurrentlyInCreation.add(beanName) 标明该 beanName 正在被创建
+ 				 */
 				beforeSingletonCreation(beanName);
 				boolean newSingleton = false;
 				boolean recordSuppressedExceptions = (this.suppressedExceptions == null);
@@ -219,6 +283,7 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 					this.suppressedExceptions = new LinkedHashSet<>();
 				}
 				try {
+					// 6. 调用匿名内部类创建对象
 					singletonObject = singletonFactory.getObject();
 					newSingleton = true;
 				}
@@ -242,9 +307,14 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 					if (recordSuppressedExceptions) {
 						this.suppressedExceptions = null;
 					}
+					/**
+					 * 单例对象创建完成后 singletonsCurrentlyInCreation.remove(beanName)
+					 * 标明该 beanName 已经被创建完成
+					 */
 					afterSingletonCreation(beanName);
 				}
 				if (newSingleton) {
+					// 到这一步很不容易啊！！添加单例对象
 					addSingleton(beanName, singletonObject);
 				}
 			}

@@ -81,6 +81,7 @@ public abstract class BeanFactoryUtils {
 	public static String transformedBeanName(String name) {
 		Assert.notNull(name, "'name' must not be null");
 		if (!name.startsWith(BeanFactory.FACTORY_BEAN_PREFIX)) {
+			// 不包含FactoryBean的特定前缀 则判断为普通类 直接返回就好
 			return name;
 		}
 		return transformedBeanNameCache.computeIfAbsent(name, beanName -> {

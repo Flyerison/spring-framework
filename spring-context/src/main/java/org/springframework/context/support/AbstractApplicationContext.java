@@ -441,9 +441,11 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	}
 
 	/**
+	 * 获取资源加载起用于读入配置信息
 	 * Return the ResourcePatternResolver to use for resolving location patterns
 	 * into Resource instances. Default is a
 	 * {@link org.springframework.core.io.support.PathMatchingResourcePatternResolver},
+	 * 支持 Ant 形式  ** ？ 等的强功能
 	 * supporting Ant-style location patterns.
 	 * <p>Can be overridden in subclasses, for extended resolution strategies,
 	 * for example in a web environment.
@@ -516,40 +518,68 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	public void refresh() throws BeansException, IllegalStateException {
 		synchronized (this.startupShutdownMonitor) {
 			// Prepare this context for refreshing.
+			/**
+			 * 准备工作 包括设置启动时间是否激活标志位等
+			 */
 			prepareRefresh();
 
 			// Tell the subclass to refresh the internal bean factory.
+			/**
+			 * 返回工厂 也是对资源进行加载 （该处仅仅将bean封装成BeanDefinition 并没有被实例化）
+			 * 算是大楼的基石吧 对资源进行充足的解析和封装
+			 */
 			ConfigurableListableBeanFactory beanFactory = obtainFreshBeanFactory();
 
 			// Prepare the bean factory for use in this context.
+			// 为BeanFactory配置容器特性 例如类加载起 事件处理器等
 			prepareBeanFactory(beanFactory);
 
 			try {
 				// Allows post-processing of the bean factory in context subclasses.
+				// 为容器的某些子类指定特殊的 Post 事件处理器
 				postProcessBeanFactory(beanFactory);
 
 				// Invoke factory processors registered as beans in the context.
+				/**
+				 * 工厂类实现的后置回调，允许开发者参与springIOC创建过程
+				 * 自定义的类需要继承BeanFactoryPostProcessor接口
+				 * 1. scan package 扫描包路径
+				 * 2. map.put  将扫描出的Bean添加到beanDefinitionMap中
+				 * 3. invoke BeanFactoryPostProcess interface 执行bean工厂的后置处理工作
+				 *
+				 *
+				 */
 				invokeBeanFactoryPostProcessors(beanFactory);
 
 				// Register bean processors that intercept bean creation.
+				// 注册beanPostProcessor Oi Post事件处理器
 				registerBeanPostProcessors(beanFactory);
 
 				// Initialize message source for this context.
+				// 初始化信息 跟国际化有关 不重要
 				initMessageSource();
 
 				// Initialize event multicaster for this context.
+				// 初始化应用事件广播器
 				initApplicationEventMulticaster();
 
 				// Initialize other special beans in specific context subclasses.
+				// 调用子类的某些特殊Bean的初始化方法
 				onRefresh();
 
 				// Check for listener beans and register them.
+				// 为事件传播器注册事件监听器
 				registerListeners();
 
 				// Instantiate all remaining (non-lazy-init) singletons.
+				/**
+				 * 初始化剩余的单例Bean
+				 * DI 流程 捡主要的注释 Spring代码毕竟多且复杂
+				 */
 				finishBeanFactoryInitialization(beanFactory);
 
 				// Last step: publish corresponding event.
+				// 初始化容器的生命周期事件处理器， 并发布容器的生命周期事件
 				finishRefresh();
 			}
 
@@ -560,9 +590,11 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 				}
 
 				// Destroy already created singletons to avoid dangling resources.
+				// 销毁已创建的Bean
 				destroyBeans();
 
 				// Reset 'active' flag.
+				//取消刷新操作 重置容器的同步标识
 				cancelRefresh(ex);
 
 				// Propagate exception to caller.
@@ -875,6 +907,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 		beanFactory.freezeConfiguration();
 
 		// Instantiate all remaining (non-lazy-init) singletons.
+		// 实例化单例对象
 		beanFactory.preInstantiateSingletons();
 	}
 

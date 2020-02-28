@@ -116,14 +116,17 @@ class TypeConverterDelegate {
 			@Nullable Class<T> requiredType, @Nullable TypeDescriptor typeDescriptor) throws IllegalArgumentException {
 
 		// Custom editor for this type?
+		// 参数编辑器仓库 根据类型和参数名称获取 自定义的编辑器
 		PropertyEditor editor = this.propertyEditorRegistry.findCustomEditor(requiredType, propertyName);
 
 		ConversionFailedException conversionAttemptEx = null;
 
 		// No custom editor but custom ConversionService specified?
+		// 尝试获取 转换服务
 		ConversionService conversionService = this.propertyEditorRegistry.getConversionService();
 		if (editor == null && conversionService != null && newValue != null && typeDescriptor != null) {
 			TypeDescriptor sourceTypeDesc = TypeDescriptor.forObject(newValue);
+			// 判断 注册的转换服务能不能支持该类型
 			if (conversionService.canConvert(sourceTypeDesc, typeDescriptor)) {
 				try {
 					return (T) conversionService.convert(newValue, sourceTypeDesc, typeDescriptor);
@@ -138,6 +141,7 @@ class TypeConverterDelegate {
 		Object convertedValue = newValue;
 
 		// Value not of required type?
+		// isAssignableValue： requiredType 能否可以进行分配指针
 		if (editor != null || (requiredType != null && !ClassUtils.isAssignableValue(requiredType, convertedValue))) {
 			if (typeDescriptor != null && requiredType != null && Collection.class.isAssignableFrom(requiredType) &&
 					convertedValue instanceof String) {
@@ -161,6 +165,7 @@ class TypeConverterDelegate {
 			// Try to apply some standard type conversion rules if appropriate.
 
 			if (convertedValue != null) {
+				// 一堆特殊类型转换代码 感兴趣的可以看下 特殊情况下起作用
 				if (Object.class == requiredType) {
 					return (T) convertedValue;
 				}

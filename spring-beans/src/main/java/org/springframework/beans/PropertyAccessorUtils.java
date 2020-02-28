@@ -79,6 +79,8 @@ public abstract class PropertyAccessorUtils {
 	}
 
 	/**
+	 * 在给出的参数路径上 获取第一个或最后一个嵌套属性分隔符
+	 * 应该是获取点号下标 但是不支持[]
 	 * Determine the first (or last) nested property separator in the
 	 * given property path, ignoring dots in keys (like "map[my.key]").
 	 * @param propertyPath the property path to check

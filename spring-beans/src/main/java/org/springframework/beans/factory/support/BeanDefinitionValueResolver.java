@@ -108,10 +108,17 @@ class BeanDefinitionValueResolver {
 	public Object resolveValueIfNecessary(Object argName, @Nullable Object value) {
 		// We must check each value to see whether it requires a runtime reference
 		// to another bean to be resolved.
+		// 对设置的多种类型数值 分别属性设置  主要跟踪下String类型和引用类型
+		// ref 引用 类型 ref引用用的非常频繁 也就是经常说的Bean的依赖注入 这边也涉及了循环依赖
+		//
+		// 当依赖的对象创建过程执行到这一步的时候 标明这个对象也依赖着其他的Bean对象
+		// 那么如果发生一种情况 就是 这个对象依赖的其实是被依赖对象 e.g. A依赖B B反过来又依赖A
+		// 那么就产生循环依赖的问题  一直往下走 依旧会到 beanFactory.getBean(beanName) 方法上
 		if (value instanceof RuntimeBeanReference) {
 			RuntimeBeanReference ref = (RuntimeBeanReference) value;
 			return resolveReference(argName, ref);
 		}
+		// 对引用容器中另一个Bean名称的属性进行解析
 		else if (value instanceof RuntimeBeanNameReference) {
 			String refName = ((RuntimeBeanNameReference) value).getBeanName();
 			refName = String.valueOf(doEvaluate(refName));
@@ -121,6 +128,7 @@ class BeanDefinitionValueResolver {
 			}
 			return refName;
 		}
+		// bean类型 主要指内部类
 		else if (value instanceof BeanDefinitionHolder) {
 			// Resolve BeanDefinitionHolder: contains BeanDefinition with name and aliases.
 			BeanDefinitionHolder bdHolder = (BeanDefinitionHolder) value;
@@ -144,6 +152,7 @@ class BeanDefinitionValueResolver {
 			}
 			return result;
 		}
+		// 数组类型
 		else if (value instanceof ManagedArray) {
 			// May need to resolve contained runtime references.
 			ManagedArray array = (ManagedArray) value;
@@ -201,6 +210,7 @@ class BeanDefinitionValueResolver {
 		}
 		else if (value instanceof TypedStringValue) {
 			// Convert value to target type here.
+			// 读取具体属性 判断不了具体类型 只能保存成字符串类型 到这里再进行解析 转化成合适的类型存储数据
 			TypedStringValue typedStringValue = (TypedStringValue) value;
 			Object valueObject = evaluate(typedStringValue);
 			try {
@@ -303,6 +313,7 @@ class BeanDefinitionValueResolver {
 		try {
 			Object bean;
 			Class<?> beanType = ref.getBeanType();
+			// 如果引用对象在父类容器中 去父类容器去找 这里没有直接跳过
 			if (ref.isToParent()) {
 				BeanFactory parent = this.beanFactory.getParentBeanFactory();
 				if (parent == null) {
@@ -326,9 +337,20 @@ class BeanDefinitionValueResolver {
 					resolvedName = namedBean.getBeanName();
 				}
 				else {
+					// 默认没有配置beanType的话  走这个 将BeanName转换下成能用的
 					resolvedName = String.valueOf(doEvaluate(ref.getBeanName()));
+					/**
+					 * 熟悉的getBean方法 根据转换好的BeanName去"获取"Bean
+					 * 也就是前面经常说的循环依赖问题 到这里就循环获取了 需要解决
+					 *
+					 * 第一次走完这个方法标明依赖的对象的指针已经拿到了  但是该对象不会保证是完全创建好的
+					 * e.g. A依赖B B又依赖A 到这里B拿到了A对象的指针 但是A还没有创建完成！ 但是无所谓有指针了就可以了 剩下A可以自己搞了
+					 *
+					 */
+					// 获取Bean对象 如果没有实例化 则会 **递归** （重点 要考） 调用bean的初始化和依赖注入
 					bean = this.beanFactory.getBean(resolvedName);
 				}
+				// 这里应该是 @Dependent 等注解的支持  标明该对象已经创建完成了  需要根据该对象去创建对象的类可以去创建了～～ 有点绕 意思明白
 				this.beanFactory.registerDependentBean(resolvedName, this.beanName);
 			}
 			if (bean instanceof NullBean) {

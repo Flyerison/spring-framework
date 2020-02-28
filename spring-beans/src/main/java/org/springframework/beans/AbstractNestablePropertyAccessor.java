@@ -270,17 +270,22 @@ public abstract class AbstractNestablePropertyAccessor extends AbstractPropertyA
 		}
 	}
 
+	// 事先属性依赖注入
 	protected void setPropertyValue(PropertyTokenHolder tokens, PropertyValue pv) throws BeansException {
+		// 复杂的key场景下使用
 		if (tokens.keys != null) {
 			processKeyedProperty(tokens, pv);
 		}
 		else {
+			// 简单普通的走这个方法
 			processLocalProperty(tokens, pv);
 		}
 	}
 
+	// 属性注入关键代码 藏的非常深
 	@SuppressWarnings("unchecked")
 	private void processKeyedProperty(PropertyTokenHolder tokens, PropertyValue pv) {
+		// 调用属性的getter方法 获取属性值
 		Object propValue = getPropertyHoldingValue(tokens);
 		PropertyHandler ph = getLocalPropertyHandler(tokens.actualName);
 		if (ph == null) {
@@ -432,6 +437,7 @@ public abstract class AbstractNestablePropertyAccessor extends AbstractPropertyA
 			Object originalValue = pv.getValue();
 			Object valueToApply = originalValue;
 			if (!Boolean.FALSE.equals(pv.conversionNecessary)) {
+				// 又一次检查 如果值已经被转换过 直接赋值即可
 				if (pv.isConverted()) {
 					valueToApply = pv.getConvertedValue();
 				}
@@ -450,11 +456,13 @@ public abstract class AbstractNestablePropertyAccessor extends AbstractPropertyA
 							}
 						}
 					}
+					// 老逻辑了
 					valueToApply = convertForProperty(
 							tokens.canonicalName, oldValue, originalValue, ph.toTypeDescriptor());
 				}
 				pv.getOriginalPropertyValue().conversionNecessary = (valueToApply != originalValue);
 			}
+			// 实现value赋值
 			ph.setValue(valueToApply);
 		}
 		catch (TypeMismatchException ex) {
@@ -808,15 +816,20 @@ public abstract class AbstractNestablePropertyAccessor extends AbstractPropertyA
 	 */
 	@SuppressWarnings("unchecked")  // avoid nested generic
 	protected AbstractNestablePropertyAccessor getPropertyAccessorForPropertyPath(String propertyPath) {
+		// 获取 点 符号的下标
+		// 可能是针对有内部类之类的情况设计的～～
 		int pos = PropertyAccessorUtils.getFirstNestedPropertySeparatorIndex(propertyPath);
 		// Handle nested properties recursively.
+		// 如果有点号的话 要进一步解析
 		if (pos > -1) {
 			String nestedProperty = propertyPath.substring(0, pos);
 			String nestedPath = propertyPath.substring(pos + 1);
+			// 获取存取器 用到的话 再看吧
 			AbstractNestablePropertyAccessor nestedPa = getNestedPropertyAccessor(nestedProperty);
 			return nestedPa.getPropertyAccessorForPropertyPath(nestedPath);
 		}
 		else {
+			// 一般没有 . 直接return
 			return this;
 		}
 	}
@@ -926,19 +939,26 @@ public abstract class AbstractNestablePropertyAccessor extends AbstractPropertyA
 	 * @return representation of the parsed property tokens
 	 */
 	private PropertyTokenHolder getPropertyNameTokens(String propertyName) {
+		// propertyName 是最后一个 点号 下的属性名称 e.g. a.b.c 就是 c
+		// e.g. 从代码上推断 初始的 propertyName 的格式应该是这样的  name1.name2['key1']['key2']
 		String actualName = null;
 		List<String> keys = new ArrayList<>(2);
 		int searchIndex = 0;
 		while (searchIndex != -1) {
+			// 前缀位置
 			int keyStart = propertyName.indexOf(PROPERTY_KEY_PREFIX, searchIndex);
 			searchIndex = -1;
+			// 普通name 的话 直接 就可以break了
 			if (keyStart != -1) {
+				// 后缀的位置
 				int keyEnd = getPropertyNameKeyEnd(propertyName, keyStart + PROPERTY_KEY_PREFIX.length());
 				if (keyEnd != -1) {
 					if (actualName == null) {
 						actualName = propertyName.substring(0, keyStart);
 					}
 					String key = propertyName.substring(keyStart + PROPERTY_KEY_PREFIX.length(), keyEnd);
+					// key 不为null 或 ""
+					// 并且 key 以 ' 或 " 开头结尾
 					if (key.length() > 1 && (key.startsWith("'") && key.endsWith("'")) ||
 							(key.startsWith("\"") && key.endsWith("\""))) {
 						key = key.substring(1, key.length() - 1);
@@ -950,6 +970,7 @@ public abstract class AbstractNestablePropertyAccessor extends AbstractPropertyA
 		}
 		PropertyTokenHolder tokens = new PropertyTokenHolder(actualName != null ? actualName : propertyName);
 		if (!keys.isEmpty()) {
+			// 排列组合字符串
 			tokens.canonicalName += PROPERTY_KEY_PREFIX +
 					StringUtils.collectionToDelimitedString(keys, PROPERTY_KEY_SUFFIX + PROPERTY_KEY_PREFIX) +
 					PROPERTY_KEY_SUFFIX;

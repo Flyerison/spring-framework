@@ -54,6 +54,7 @@ public class SimpleAliasRegistry implements AliasRegistry {
 		Assert.hasText(name, "'name' must not be empty");
 		Assert.hasText(alias, "'alias' must not be empty");
 		synchronized (this.aliasMap) {
+			// 别名跟名称相同 删除
 			if (alias.equals(name)) {
 				this.aliasMap.remove(alias);
 				if (logger.isDebugEnabled()) {
@@ -61,13 +62,16 @@ public class SimpleAliasRegistry implements AliasRegistry {
 				}
 			}
 			else {
+				// 先根据别名 尝试获取下 真正的名称
 				String registeredName = this.aliasMap.get(alias);
 				if (registeredName != null) {
 					if (registeredName.equals(name)) {
 						// An existing alias - no need to re-register
+						// 如果存在这条关系 不需要再次注册 直接返回
 						return;
 					}
 					if (!allowAliasOverriding()) {
+						// 不允许重载 抛下异常
 						throw new IllegalStateException("Cannot define alias '" + alias + "' for name '" +
 								name + "': It is already registered for name '" + registeredName + "'.");
 					}
@@ -76,6 +80,10 @@ public class SimpleAliasRegistry implements AliasRegistry {
 								registeredName + "' with new target name '" + name + "'");
 					}
 				}
+				// 到这里 就说明这别名是条新的关系
+				// 但是需要预防 循环别名问题
+				// 即 能否通过name查找到alias 如果能 再将alias作为key 关联到name 就会出现循环的问题
+				// 可以记录下 比较好的map循环引用解决方案
 				checkForAliasCircle(name, alias);
 				this.aliasMap.put(alias, name);
 				if (logger.isTraceEnabled()) {
@@ -205,6 +213,7 @@ public class SimpleAliasRegistry implements AliasRegistry {
 	 * Determine the raw name, resolving aliases to canonical names.
 	 * @param name the user-specified name
 	 * @return the transformed name
+	 * 循环别名的问题解决
 	 */
 	public String canonicalName(String name) {
 		String canonicalName = name;

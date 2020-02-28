@@ -527,6 +527,8 @@ public abstract class ClassUtils {
 	}
 
 	/**
+	 * 检查是否可以将右侧的类型给左侧类型赋值
+	 * 考虑原始包装器也可以对基本类型赋值
 	 * Check if the right-hand side type may be assigned to the left-hand side
 	 * type, assuming setting by reflection. Considers primitive wrapper
 	 * classes as assignable to the corresponding primitive types.
@@ -563,6 +565,8 @@ public abstract class ClassUtils {
 	 * @param type the target type
 	 * @param value the value that should be assigned to the type
 	 * @return if the type is assignable from the value
+	 * value != null：
+	 * value == null：8大基础类型 不可指针 就return false 标明不可分配值
 	 */
 	public static boolean isAssignableValue(Class<?> type, @Nullable Object value) {
 		Assert.notNull(type, "Type must not be null");

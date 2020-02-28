@@ -94,8 +94,9 @@ public class ClassPathScanningCandidateComponentProvider implements EnvironmentC
 
 	private String resourcePattern = DEFAULT_RESOURCE_PATTERN;
 
+	// 保存过滤规则包含的注解 即一些Component注解
 	private final List<TypeFilter> includeFilters = new LinkedList<>();
-
+	// 要排除的注解
 	private final List<TypeFilter> excludeFilters = new LinkedList<>();
 
 	@Nullable
@@ -200,12 +201,15 @@ public class ClassPathScanningCandidateComponentProvider implements EnvironmentC
 	 * {@link Controller @Controller} stereotype annotations.
 	 * <p>Also supports Java EE 6's {@link javax.annotation.ManagedBean} and
 	 * JSR-330's {@link javax.inject.Named} annotations, if available.
-	 *
+	 * 注册默认的规则过滤
 	 */
 	@SuppressWarnings("unchecked")
 	protected void registerDefaultFilters() {
+		// 添加Component注解规则
+		// Component算是Spring的基础注解之一吧 其他的Service Controller 等都添加了Component注解
 		this.includeFilters.add(new AnnotationTypeFilter(Component.class));
 		ClassLoader cl = ClassPathScanningCandidateComponentProvider.class.getClassLoader();
+		// 额外再添加两个注解
 		try {
 			this.includeFilters.add(new AnnotationTypeFilter(
 					((Class<? extends Annotation>) ClassUtils.forName("javax.annotation.ManagedBean", cl)), false));
@@ -307,6 +311,7 @@ public class ClassPathScanningCandidateComponentProvider implements EnvironmentC
 	 * Scan the class path for candidate components.
 	 * @param basePackage the package to check for annotated classes
 	 * @return a corresponding Set of autodetected bean definitions
+	 * 扫描类路径查找特定组件
 	 */
 	public Set<BeanDefinition> findCandidateComponents(String basePackage) {
 		if (this.componentsIndex != null && indexSupportsIncludeFilters()) {
@@ -384,7 +389,9 @@ public class ClassPathScanningCandidateComponentProvider implements EnvironmentC
 			boolean traceEnabled = logger.isTraceEnabled();
 			boolean debugEnabled = logger.isDebugEnabled();
 			for (String type : types) {
+				// 获取读取器 但是是通过汇编方式做的
 				MetadataReader metadataReader = getMetadataReaderFactory().getMetadataReader(type);
+				// 符合前面设置的过滤规则
 				if (isCandidateComponent(metadataReader)) {
 					AnnotatedGenericBeanDefinition sbd = new AnnotatedGenericBeanDefinition(
 							metadataReader.getAnnotationMetadata());

@@ -129,7 +129,7 @@ public class StandardBeanExpressionResolver implements BeanExpressionResolver {
 		this.expressionParser = expressionParser;
 	}
 
-
+	// Bean 规则 解析器
 	@Override
 	@Nullable
 	public Object evaluate(@Nullable String value, BeanExpressionContext evalContext) throws BeansException {
@@ -140,6 +140,7 @@ public class StandardBeanExpressionResolver implements BeanExpressionResolver {
 			Expression expr = this.expressionCache.get(value);
 			if (expr == null) {
 				expr = this.expressionParser.parseExpression(value, this.beanExpressionParserContext);
+				// 解析规则入缓存
 				this.expressionCache.put(value, expr);
 			}
 			StandardEvaluationContext sec = this.evaluationCache.get(evalContext);
@@ -158,6 +159,7 @@ public class StandardBeanExpressionResolver implements BeanExpressionResolver {
 				customizeEvaluationContext(sec);
 				this.evaluationCache.put(evalContext, sec);
 			}
+			// 获取值 其实就是获取前面解析时放入的String字符串
 			return expr.getValue(sec);
 		}
 		catch (Throwable ex) {

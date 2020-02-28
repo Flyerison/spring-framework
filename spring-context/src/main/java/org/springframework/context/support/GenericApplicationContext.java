@@ -104,6 +104,8 @@ public class GenericApplicationContext extends AbstractApplicationContext implem
 
 
 	/**
+	 * 创建了beanFactory 非常重要的一个类！
+	 * 也是网上经常说的Spring工厂 用来产生bean
 	 * Create a new GenericApplicationContext.
 	 * @see #registerBeanDefinition
 	 * @see #refresh

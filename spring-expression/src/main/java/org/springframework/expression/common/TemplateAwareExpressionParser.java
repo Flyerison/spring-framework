@@ -45,10 +45,12 @@ public abstract class TemplateAwareExpressionParser implements ExpressionParser 
 
 	@Override
 	public Expression parseExpression(String expressionString, @Nullable ParserContext context) throws ParseException {
+		// 上下文不为空 且 是模板
 		if (context != null && context.isTemplate()) {
 			return parseTemplate(expressionString, context);
 		}
 		else {
+			// 直接抛异常
 			return doParseExpression(expressionString, context);
 		}
 	}
@@ -59,6 +61,7 @@ public abstract class TemplateAwareExpressionParser implements ExpressionParser 
 			return new LiteralExpression("");
 		}
 
+		// 真正解析的方法
 		Expression[] expressions = parseExpressions(expressionString, context);
 		if (expressions.length == 1) {
 			return expressions[0];
@@ -69,16 +72,23 @@ public abstract class TemplateAwareExpressionParser implements ExpressionParser 
 	}
 
 	/**
+	 * 使用配置的解析器对字符串进行解析的方法，字符串可以在 ${} 中包含任意数量的解析表达式，例如：
+	 * "foo${expr0}bar${expr1}"
 	 * Helper that parses given expression string using the configured parser. The
 	 * expression string can contain any number of expressions all contained in "${...}"
-	 * markers. For instance: "foo${expr0}bar${expr1}". The static pieces of text will
+	 * markers. For instance: "foo${expr0}bar${expr1}".
+	 * The static pieces of text will
 	 * also be returned as Expressions that just return that static piece of text. As a
 	 * result, evaluating all returned expressions and concatenating the results produces
-	 * the complete evaluated string. Unwrapping is only done of the outermost delimiters
+	 * the complete evaluated string.
+	 * 解包只会对最外层起作用，像'hello ${foo${abc}}' 将会被分解成 'hello ' 和 'foo${abc}'
+	 * 这也就意味着将 ${} 作为解析规则的一部分是没问题的
+	 * Unwrapping is only done of the outermost delimiters
 	 * found, so the string 'hello ${foo${abc}}' would break into the pieces 'hello ' and
 	 * 'foo${abc}'. This means that expression languages that used ${..} as part of their
-	 * functionality are supported without any problem. The parsing is aware of the
-	 * structure of an embedded expression. It assumes that parentheses '(', square
+	 * functionality are supported without any problem.
+	 * 表达式规则是 [ { ' 等特殊意义字符 必须成对配对出现
+	 * The parsing is aware of the structure of an embedded expression. It assumes that parentheses '(', square
 	 * brackets '[' and curly brackets '}' must be in pairs within the expression unless
 	 * they are within a string literal and a string literal starts and terminates with a
 	 * single quote '.
@@ -88,10 +98,12 @@ public abstract class TemplateAwareExpressionParser implements ExpressionParser 
 	 */
 	private Expression[] parseExpressions(String expressionString, ParserContext context) throws ParseException {
 		List<Expression> expressions = new ArrayList<>();
+		// 前后缀
 		String prefix = context.getExpressionPrefix();
 		String suffix = context.getExpressionSuffix();
 		int startIdx = 0;
 
+		// 下面就是一些解析字符串的逻辑了 不细说了
 		while (startIdx < expressionString.length()) {
 			int prefixIndex = expressionString.indexOf(prefix, startIdx);
 			if (prefixIndex >= startIdx) {

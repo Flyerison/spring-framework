@@ -317,7 +317,7 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 		if (logger.isTraceEnabled()) {
 			logger.trace("Loading XML bean definitions from " + encodedResource);
 		}
-
+		// 缓存资源
 		Set<EncodedResource> currentResources = this.resourcesCurrentlyBeingLoaded.get();
 		if (currentResources == null) {
 			currentResources = new HashSet<>(4);
@@ -330,10 +330,12 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 		try {
 			InputStream inputStream = encodedResource.getResource().getInputStream();
 			try {
+				// 编码转换
 				InputSource inputSource = new InputSource(inputStream);
 				if (encodedResource.getEncoding() != null) {
 					inputSource.setEncoding(encodedResource.getEncoding());
 				}
+				// 一步步往下走吧
 				return doLoadBeanDefinitions(inputSource, encodedResource.getResource());
 			}
 			finally {
@@ -390,7 +392,9 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 			throws BeanDefinitionStoreException {
 
 		try {
+			// 将xml文件格式转换成 XML 格式的 Document 对象
 			Document doc = doLoadDocument(inputSource, resource);
+			// 向BeanDefintion注册 bean信息
 			int count = registerBeanDefinitions(doc, resource);
 			if (logger.isDebugEnabled()) {
 				logger.debug("Loaded " + count + " bean definitions from " + resource);
@@ -509,9 +513,13 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 	 * @see BeanDefinitionDocumentReader#registerBeanDefinitions
 	 */
 	public int registerBeanDefinitions(Document doc, Resource resource) throws BeanDefinitionStoreException {
+		// 为 BeanDefinition 解析 创建专门的解读器
 		BeanDefinitionDocumentReader documentReader = createBeanDefinitionDocumentReader();
 		int countBefore = getRegistry().getBeanDefinitionCount();
+		// 封装下XmlReader的上下文
+		// 注册信息
 		documentReader.registerBeanDefinitions(doc, createReaderContext(resource));
+		// 注册完毕 返回新加的bean数量
 		return getRegistry().getBeanDefinitionCount() - countBefore;
 	}
 

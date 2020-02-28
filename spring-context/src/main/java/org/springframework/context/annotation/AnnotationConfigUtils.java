@@ -236,6 +236,7 @@ public abstract class AnnotationConfigUtils {
 
 	static void processCommonDefinitionAnnotations(AnnotatedBeanDefinition abd, AnnotatedTypeMetadata metadata) {
 		AnnotationAttributes lazy = attributesFor(metadata, Lazy.class);
+		// @lazy 延迟加载注解 设置下属性值
 		if (lazy != null) {
 			abd.setLazyInit(lazy.getBoolean("value"));
 		}
@@ -246,18 +247,22 @@ public abstract class AnnotationConfigUtils {
 			}
 		}
 
+		// @Primary 注解 会将该Bean设置为 autowiring 自动注入装配的首选对象
 		if (metadata.isAnnotated(Primary.class.getName())) {
 			abd.setPrimary(true);
 		}
+		// @DependsOn 注解 确保实例化该Bean时会将依赖的Bean先创建好
 		AnnotationAttributes dependsOn = attributesFor(metadata, DependsOn.class);
 		if (dependsOn != null) {
 			abd.setDependsOn(dependsOn.getStringArray("value"));
 		}
 
+		// @Role注解
 		AnnotationAttributes role = attributesFor(metadata, Role.class);
 		if (role != null) {
 			abd.setRole(role.getNumber("value").intValue());
 		}
+		// @Description 描述注解
 		AnnotationAttributes description = attributesFor(metadata, Description.class);
 		if (description != null) {
 			abd.setDescription(description.getString("value"));
@@ -268,10 +273,12 @@ public abstract class AnnotationConfigUtils {
 			ScopeMetadata metadata, BeanDefinitionHolder definition, BeanDefinitionRegistry registry) {
 
 		ScopedProxyMode scopedProxyMode = metadata.getScopedProxyMode();
+		// 代理设置为NO 不应用代理
 		if (scopedProxyMode.equals(ScopedProxyMode.NO)) {
 			return definition;
 		}
 		boolean proxyTargetClass = scopedProxyMode.equals(ScopedProxyMode.TARGET_CLASS);
+		// 委托创建
 		return ScopedProxyCreator.createScopedProxy(definition, registry, proxyTargetClass);
 	}
 

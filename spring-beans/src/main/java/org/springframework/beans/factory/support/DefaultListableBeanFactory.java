@@ -163,6 +163,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 	private final Map<Class<?>, Object> resolvableDependencies = new ConcurrentHashMap<>(16);
 
 	/** Map of bean definition objects, keyed by bean name. */
+	// 存储 BeanDefinition 的map
 	private final Map<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<>(256);
 
 	/** Map of singleton and non-singleton bean names, keyed by dependency type. */
@@ -466,6 +467,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 
 	@Override
 	public String[] getBeanNamesForType(ResolvableType type) {
+		// 包括非单例 允许获取提前初始化的Bean
 		return getBeanNamesForType(type, true, true);
 	}
 
@@ -854,8 +856,16 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 
 		// Trigger initialization of all non-lazy singleton beans...
 		for (String beanName : beanNames) {
+			/**
+			 * 类型转换 GenericBeanDefinition 转同级 RootBeanDefinition
+			 */
 			RootBeanDefinition bd = getMergedLocalBeanDefinition(beanName);
+			// 判断封装好的 BeanDefinition 是否具备条件进行实例化
+			// 非抽象类 单例模式 非懒加载
 			if (!bd.isAbstract() && bd.isSingleton() && !bd.isLazyInit()) {
+				/**
+				 * FactoryBean 工厂类 Spring为了简化创建过程而特制的类
+				 */
 				if (isFactoryBean(beanName)) {
 					Object bean = getBean(FACTORY_BEAN_PREFIX + beanName);
 					if (bean instanceof FactoryBean) {
@@ -876,6 +886,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 					}
 				}
 				else {
+					// 普通类直接getBean
 					getBean(beanName);
 				}
 			}
@@ -913,6 +924,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 
 		if (beanDefinition instanceof AbstractBeanDefinition) {
 			try {
+				// 校验
 				((AbstractBeanDefinition) beanDefinition).validate();
 			}
 			catch (BeanDefinitionValidationException ex) {
@@ -921,11 +933,15 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			}
 		}
 
+		// 检查对应beanName的BeanDefiniton是否原来存在
 		BeanDefinition existingDefinition = this.beanDefinitionMap.get(beanName);
+		// 原本就有beanName对应的对象
 		if (existingDefinition != null) {
+			// 不允许覆盖 则报错
 			if (!isAllowBeanDefinitionOverriding()) {
 				throw new BeanDefinitionOverrideException(beanName, beanDefinition, existingDefinition);
 			}
+			// 不懂 TODO
 			else if (existingDefinition.getRole() < beanDefinition.getRole()) {
 				// e.g. was ROLE_APPLICATION, now overriding with ROLE_SUPPORT or ROLE_INFRASTRUCTURE
 				if (logger.isInfoEnabled()) {
@@ -934,6 +950,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 							existingDefinition + "] with [" + beanDefinition + "]");
 				}
 			}
+			// 虽然 key 一致 但是v对应的 value 却不同
 			else if (!beanDefinition.equals(existingDefinition)) {
 				if (logger.isDebugEnabled()) {
 					logger.debug("Overriding bean definition for bean '" + beanName +
@@ -948,12 +965,17 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 							"] with [" + beanDefinition + "]");
 				}
 			}
+			// 覆盖下原来的值
 			this.beanDefinitionMap.put(beanName, beanDefinition);
 		}
 		else {
+			// 如果对应的beanName就是空的
+			// 如果Bean创建的过程已经启动了
 			if (hasBeanCreationStarted()) {
 				// Cannot modify startup-time collection elements anymore (for stable iteration)
+				// 需要线程同步下 保证数据的一致性
 				synchronized (this.beanDefinitionMap) {
+					// 这个其实就是经常说的 注册！
 					this.beanDefinitionMap.put(beanName, beanDefinition);
 					List<String> updatedDefinitions = new ArrayList<>(this.beanDefinitionNames.size() + 1);
 					updatedDefinitions.addAll(this.beanDefinitionNames);
@@ -964,6 +986,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			}
 			else {
 				// Still in startup registration phase
+				// 依旧在注册的阶段 这里就显得代码量少了一些
 				this.beanDefinitionMap.put(beanName, beanDefinition);
 				this.beanDefinitionNames.add(beanName);
 				removeManualSingletonName(beanName);
@@ -971,7 +994,9 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			this.frozenBeanDefinitionNames = null;
 		}
 
+		// 已经注册过同名的BeanDefinition
 		if (existingDefinition != null || containsSingleton(beanName)) {
+			// 重置 TODO
 			resetBeanDefinition(beanName);
 		}
 	}
@@ -1006,13 +1031,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 	}
 
 	/**
-	 * Reset all bean definition caches for the given bean,
-	 * including the caches of beans that are derived from it.
-	 * <p>Called after an existing bean definition has been replaced or removed,
-	 * triggering {@link #clearMergedBeanDefinition}, {@link #destroySingleton}
-	 * and {@link MergedBeanDefinitionPostProcessor#resetBeanDefinition} on the
-	 * given bean and on all bean definitions that have the given bean as parent.
-	 * @param beanName the name of the bean to reset
++
 	 * @see #registerBeanDefinition
 	 * @see #removeBeanDefinition
 	 */
@@ -1119,6 +1138,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 	@Override
 	public <T> NamedBeanHolder<T> resolveNamedBean(Class<T> requiredType) throws BeansException {
 		Assert.notNull(requiredType, "Required type must not be null");
+		// go down
 		NamedBeanHolder<T> namedBean = resolveNamedBean(ResolvableType.forRawClass(requiredType), null, false);
 		if (namedBean != null) {
 			return namedBean;
@@ -1136,8 +1156,10 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			ResolvableType requiredType, @Nullable Object[] args, boolean nonUniqueAsNull) throws BeansException {
 
 		Assert.notNull(requiredType, "Required type must not be null");
+		// 根据类型获取BeanName
 		String[] candidateNames = getBeanNamesForType(requiredType);
 
+		// 如果获取到的BeanName大于1个
 		if (candidateNames.length > 1) {
 			List<String> autowireCandidates = new ArrayList<>(candidateNames.length);
 			for (String beanName : candidateNames) {

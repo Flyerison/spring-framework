@@ -53,12 +53,14 @@ import org.springframework.util.Assert;
  */
 public class AnnotationConfigApplicationContext extends GenericApplicationContext implements AnnotationConfigRegistry {
 
+	// 基于注解的读取器 跟 xml的读取器对应
 	private final AnnotatedBeanDefinitionReader reader;
-
+	// 根据类路径扫描的一个扫描器
 	private final ClassPathBeanDefinitionScanner scanner;
 
 
 	/**
+	 * reader和scanner用法较少 可忽略
 	 * Create a new AnnotationConfigApplicationContext that needs to be populated
 	 * through {@link #register} calls and then manually {@linkplain #refresh refreshed}.
 	 */
@@ -84,7 +86,9 @@ public class AnnotationConfigApplicationContext extends GenericApplicationContex
 	 * {@link Configuration @Configuration} classes
 	 */
 	public AnnotationConfigApplicationContext(Class<?>... componentClasses) {
+		// 进行调用无参构造方法 并首先调用父类的无参构造方法！会创建beanFactory
 		this();
+		// 注册配置类 比如scan路径 会优先将类加载到BeanDefine中
 		register(componentClasses);
 		refresh();
 	}

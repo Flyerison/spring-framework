@@ -60,12 +60,16 @@ public class SimpleInstantiationStrategy implements InstantiationStrategy {
 	@Override
 	public Object instantiate(RootBeanDefinition bd, @Nullable String beanName, BeanFactory owner) {
 		// Don't override the class with CGLIB if no overrides.
+		// 默认是CGLIB的方法 如果没有方法覆盖 用不着使用CGLIB方式
 		if (!bd.hasMethodOverrides()) {
 			Constructor<?> constructorToUse;
 			synchronized (bd.constructorArgumentLock) {
+				// 获取BeanDefinition装配类有没有解析判断好的构造方法和工厂方法
 				constructorToUse = (Constructor<?>) bd.resolvedConstructorOrFactoryMethod;
+				// 没有构造方法和工厂方法
 				if (constructorToUse == null) {
 					final Class<?> clazz = bd.getBeanClass();
+					// 判断类是否是接口 直接抛异常
 					if (clazz.isInterface()) {
 						throw new BeanInstantiationException(clazz, "Specified class is an interface");
 					}
@@ -75,8 +79,10 @@ public class SimpleInstantiationStrategy implements InstantiationStrategy {
 									(PrivilegedExceptionAction<Constructor<?>>) clazz::getDeclaredConstructor);
 						}
 						else {
+							// 反射获取构造方法
 							constructorToUse = clazz.getDeclaredConstructor();
 						}
+						// 将获取的默认构造方法 赋值给封装对象
 						bd.resolvedConstructorOrFactoryMethod = constructorToUse;
 					}
 					catch (Throwable ex) {
@@ -84,6 +90,7 @@ public class SimpleInstantiationStrategy implements InstantiationStrategy {
 					}
 				}
 			}
+			// JDK 反射进行实例化
 			return BeanUtils.instantiateClass(constructorToUse);
 		}
 		else {
