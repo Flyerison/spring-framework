@@ -46,6 +46,7 @@ import org.springframework.util.StringUtils;
  * @author Rod Johnson
  * @author Juergen Hoeller
  * @see SimpleUrlHandlerMapping
+ * 三大映射策略之一 BeanName 映射  会根据请求路径去查找对应的BeanName的Bean
  */
 public class BeanNameUrlHandlerMapping extends AbstractDetectingUrlHandlerMapping {
 
@@ -55,6 +56,7 @@ public class BeanNameUrlHandlerMapping extends AbstractDetectingUrlHandlerMappin
 	@Override
 	protected String[] determineUrlsForHandler(String beanName) {
 		List<String> urls = new ArrayList<>();
+		// 要以 / 开头才算映射 别名也是一样的
 		if (beanName.startsWith("/")) {
 			urls.add(beanName);
 		}

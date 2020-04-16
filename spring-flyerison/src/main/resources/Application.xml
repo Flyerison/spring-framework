@@ -1,7 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <beans xmlns="http://www.springframework.org/schema/beans"
-       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+	   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	   xmlns:aop="http://www.springframework.org/schema/aop"
+	   xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.3.xsd">
+
+<!--	<context:component-scan base-package="com.flyerison.spring" />-->
+<!--	<context:annotation-config></context:annotation-config>-->
+
+
+
+
 
 	<bean id="testService" class="com.flyerison.spring.TestService">
 		<property name="name" value="gold"></property>
@@ -11,4 +20,20 @@
 	<bean id="test2Service" class="com.flyerison.spring.Test2Service">
 		<property name="testService" ref="testService"></property>
 	</bean>
+	<bean id="annotaionAspect" class="com.flyerison.spring.AnnotaionAspect"></bean>
+
+
+	<aop:config>
+		<aop:aspect ref="annotaionAspect">
+			<aop:pointcut id="tt" expression="execution(* com.flyerison.spring.TestService.*(..))"/>
+			<aop:before method="before" pointcut-ref="tt"></aop:before>
+			<aop:after method="after" pointcut-ref="tt" />
+			<aop:after-returning method="afterReturn" pointcut-ref="tt" />
+			<aop:after-throwing method="afterThrow" pointcut-ref="tt" />
+		</aop:aspect>
+
+	</aop:config>
+
+
+
 </beans>

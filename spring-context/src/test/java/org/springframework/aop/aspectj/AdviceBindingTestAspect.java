@@ -38,7 +38,8 @@ class AdviceBindingTestAspect {
 	// "advice" methods
 
 	public void oneIntArg(int age) {
-		this.collaborator.oneIntArg(age);
+		System.out.println("setAge");
+		// this.collaborator.oneIntArg(age);
 	}
 
 	public void oneObjectArg(Object bean) {
@@ -46,7 +47,8 @@ class AdviceBindingTestAspect {
 	}
 
 	public void oneIntAndOneObject(int x, Object o) {
-		this.collaborator.oneIntAndOneObject(x,o);
+		System.out.println("fduv");
+		// this.collaborator.oneIntAndOneObject(x,o);
 	}
 
 	public void needsJoinPoint(JoinPoint tjp) {

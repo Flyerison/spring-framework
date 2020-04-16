@@ -33,6 +33,8 @@ import org.springframework.web.util.WebUtils;
  * @author Juergen Hoeller
  * @since 3.1.1
  */
+// 主要支持请求重定向下的参数传递问题
+// 默认的实现类 主要是因为请求重定向的两次请求可以通过 sessionId 可以很方便
 public class SessionFlashMapManager extends AbstractFlashMapManager {
 
 	private static final String FLASH_MAPS_SESSION_ATTRIBUTE = SessionFlashMapManager.class.getName() + ".FLASH_MAPS";

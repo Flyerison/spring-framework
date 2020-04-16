@@ -50,6 +50,7 @@ import org.springframework.util.CollectionUtils;
  * @author Rossen Stoyanchev
  * @author Sam Brannen
  * @since 5.0
+ * 三大映射策略之一 简单URL映射
  */
 public class SimpleUrlHandlerMapping extends AbstractUrlHandlerMapping {
 

@@ -62,13 +62,17 @@ public class ContextLoaderTests {
 
 	@Test
 	public void testContextLoaderListenerWithDefaultContext() {
+		// 测试Servlet容器 应该是模仿 Tomcat 或者其他的 Servlet 容器 而做的测试容器
 		MockServletContext sc = new MockServletContext("");
 		sc.addInitParameter(ContextLoader.CONFIG_LOCATION_PARAM,
 				"/org/springframework/web/context/WEB-INF/applicationContext.xml " +
 				"/org/springframework/web/context/WEB-INF/context-addition.xml");
+		// Servlet 容器监听器
 		ServletContextListener listener = new ContextLoaderListener();
+		// 监听上边创建的测试容器
 		ServletContextEvent event = new ServletContextEvent(sc);
 		listener.contextInitialized(event);
+
 		String contextAttr = WebApplicationContext.ROOT_WEB_APPLICATION_CONTEXT_ATTRIBUTE;
 		WebApplicationContext context = (WebApplicationContext) sc.getAttribute(contextAttr);
 		boolean condition1 = context instanceof XmlWebApplicationContext;

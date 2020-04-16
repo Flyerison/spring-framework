@@ -54,6 +54,7 @@ import org.springframework.web.util.UrlPathHelper;
  * @since 2.0
  * @see org.springframework.web.servlet.RequestToViewNameTranslator
  * @see org.springframework.web.servlet.ViewResolver
+ * 默认的视图名翻译器
  */
 public class DefaultRequestToViewNameTranslator implements RequestToViewNameTranslator {
 
@@ -168,7 +169,9 @@ public class DefaultRequestToViewNameTranslator implements RequestToViewNameTran
 	 */
 	@Override
 	public String getViewName(HttpServletRequest request) {
+		// 获取请求路径 会将部分去掉 只包含与应用相关的部分
 		String lookupPath = this.urlPathHelper.getLookupPathForRequest(request, HandlerMapping.LOOKUP_PATH);
+		// 前缀 + 模板名 + 后缀
 		return (this.prefix + transformPath(lookupPath) + this.suffix);
 	}
 
@@ -183,15 +186,19 @@ public class DefaultRequestToViewNameTranslator implements RequestToViewNameTran
 	@Nullable
 	protected String transformPath(String lookupPath) {
 		String path = lookupPath;
+		// 去除 前缀 /
 		if (this.stripLeadingSlash && path.startsWith(SLASH)) {
 			path = path.substring(1);
 		}
+		// 去除 后缀 /
 		if (this.stripTrailingSlash && path.endsWith(SLASH)) {
 			path = path.substring(0, path.length() - 1);
 		}
+		// 去掉扩展名 例如 struts 经常看到的 .*
 		if (this.stripExtension) {
 			path = StringUtils.stripFilenameExtension(path);
 		}
+		// 分隔符
 		if (!SLASH.equals(this.separator)) {
 			path = StringUtils.replace(path, SLASH, this.separator);
 		}

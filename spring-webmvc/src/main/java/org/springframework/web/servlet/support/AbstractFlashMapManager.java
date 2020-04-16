@@ -91,25 +91,38 @@ public abstract class AbstractFlashMapManager implements FlashMapManager {
 
 	@Override
 	@Nullable
+	// 从当前 session 对应的 FlashMap 集合获取上次请求的 FlashMap 作为本次请求的输入 FlashMap
+	// 并从 session 对应的FlashMap 中移除获取到的 FlashMap 与过期的 FlashMap
 	public final FlashMap retrieveAndUpdate(HttpServletRequest request, HttpServletResponse response) {
+		// 通过请求关联的 session 获取 FlashMap 集合
 		List<FlashMap> allFlashMaps = retrieveFlashMaps(request);
+		// 如果是空的话 表示上次请求没有输出 直接返回就好
 		if (CollectionUtils.isEmpty(allFlashMaps)) {
 			return null;
 		}
 
+		// 每个 FlashMap 都有过期时间
+		// 在返回重定向响应后 如果客户端未对重定向作出响应 将会导致重定向后的请求无法接收 导致重定向前请求的输出 FlashMap 无法清空 导致内存泄露
 		List<FlashMap> mapsToRemove = getExpiredFlashMaps(allFlashMaps);
+		// 根据路径获取匹配的一个
 		FlashMap match = getMatchingFlashMap(allFlashMaps, request);
+		// 找到了 就放到删除列表中
 		if (match != null) {
 			mapsToRemove.add(match);
 		}
 
+		// 删除列表不为空的话
 		if (!mapsToRemove.isEmpty()) {
+			// 获取 session 的操作锁
 			Object mutex = getFlashMapsMutex(request);
 			if (mutex != null) {
 				synchronized (mutex) {
+					// 为了线程安全 再获取一次
 					allFlashMaps = retrieveFlashMaps(request);
 					if (allFlashMaps != null) {
+						// 把过期的和找到的那一个 删除掉
 						allFlashMaps.removeAll(mapsToRemove);
+						// 更新下状态
 						updateFlashMaps(allFlashMaps, request, response);
 					}
 				}
@@ -119,7 +132,7 @@ public abstract class AbstractFlashMapManager implements FlashMapManager {
 				updateFlashMaps(allFlashMaps, request, response);
 			}
 		}
-
+		// 返回匹配到的 FlashMap
 		return match;
 	}
 
@@ -191,17 +204,21 @@ public abstract class AbstractFlashMapManager implements FlashMapManager {
 		return ServletUriComponentsBuilder.fromPath("/").query(query).build().getQueryParams();
 	}
 
+	// 保存本次请求输出的 FlashMap 到本 session 对应的 FlashMap 集合
 	@Override
 	public final void saveOutputFlashMap(FlashMap flashMap, HttpServletRequest request, HttpServletResponse response) {
 		if (CollectionUtils.isEmpty(flashMap)) {
 			return;
 		}
 
+		// 对本次请求返回的重定向响应对应的重定向地址进行标准化
+		// 重定向请求要根据路径进行匹配 匹配成功才能作为这个请求的输入 FlashMap 使用
 		String path = decodeAndNormalizePath(flashMap.getTargetRequestPath(), request);
 		flashMap.setTargetRequestPath(path);
-
+		// 设置下过期时间
 		flashMap.startExpirationPeriod(getFlashMapTimeout());
 
+		// 还是获取锁
 		Object mutex = getFlashMapsMutex(request);
 		if (mutex != null) {
 			synchronized (mutex) {

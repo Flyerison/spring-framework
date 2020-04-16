@@ -136,6 +136,7 @@ public class SimpleUrlHandlerMapping extends AbstractUrlHandlerMapping {
 	@Override
 	public void initApplicationContext() throws BeansException {
 		super.initApplicationContext();
+		// 注册处理器map
 		registerHandlers(this.urlMap);
 	}
 
@@ -152,6 +153,7 @@ public class SimpleUrlHandlerMapping extends AbstractUrlHandlerMapping {
 		else {
 			urlMap.forEach((url, handler) -> {
 				// Prepend with slash if not already present.
+				// 自动添加 / 前缀
 				if (!url.startsWith("/")) {
 					url = "/" + url;
 				}
@@ -159,6 +161,7 @@ public class SimpleUrlHandlerMapping extends AbstractUrlHandlerMapping {
 				if (handler instanceof String) {
 					handler = ((String) handler).trim();
 				}
+				// 注册处理器
 				registerHandler(url, handler);
 			});
 			if (logger.isDebugEnabled()) {

@@ -120,26 +120,33 @@ public abstract class AbstractUrlHandlerMapping extends AbstractHandlerMapping i
 	@Override
 	@Nullable
 	protected Object getHandlerInternal(HttpServletRequest request) throws Exception {
+		// 获取请求的路径信息
 		String lookupPath = getUrlPathHelper().getLookupPathForRequest(request);
 		request.setAttribute(LOOKUP_PATH, lookupPath);
+		// 根据路径信息查找处理器
 		Object handler = lookupHandler(lookupPath, request);
 		if (handler == null) {
 			// We need to care for the default handler directly, since we need to
 			// expose the PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE for it as well.
 			Object rawHandler = null;
 			if ("/".equals(lookupPath)) {
+				// 根处理器
 				rawHandler = getRootHandler();
 			}
 			if (rawHandler == null) {
+				// 默认处理器
 				rawHandler = getDefaultHandler();
 			}
 			if (rawHandler != null) {
 				// Bean name or resolved handler?
+				// 如果是字符串类型 解析 BeanName
 				if (rawHandler instanceof String) {
 					String handlerName = (String) rawHandler;
 					rawHandler = obtainApplicationContext().getBean(handlerName);
 				}
+				// 校验处理器
 				validateHandler(rawHandler, request);
+				// 构造一个用于暴露请求路径与Uri模板参数到请求中的拦截器执行链
 				handler = buildPathExposingHandler(rawHandler, lookupPath, lookupPath, null);
 			}
 		}
@@ -162,23 +169,32 @@ public abstract class AbstractUrlHandlerMapping extends AbstractHandlerMapping i
 	@Nullable
 	protected Object lookupHandler(String urlPath, HttpServletRequest request) throws Exception {
 		// Direct match?
+		// handlerMap 保存了URL路径模式与处理器的映射管理 在应用初始化的时候就已经处理好了
+		// 直接根据路径获取响应的处理器
 		Object handler = this.handlerMap.get(urlPath);
 		if (handler != null) {
 			// Bean name or resolved handler?
+			// 如果是String类型 代表为BeanName
 			if (handler instanceof String) {
 				String handlerName = (String) handler;
+				// ApplicationContext 根据 BeanName 得到响应的处理器实例
 				handler = obtainApplicationContext().getBean(handlerName);
 			}
+			// 校验处理
 			validateHandler(handler, request);
+			// 封装执行链
 			return buildPathExposingHandler(handler, urlPath, urlPath, null);
 		}
 
 		// Pattern match?
+		// 如果没有找到对应的处理器 则使用路径参数匹配
 		List<String> matchingPatterns = new ArrayList<>();
 		for (String registeredPattern : this.handlerMap.keySet()) {
+			// 路径匹配
 			if (getPathMatcher().match(registeredPattern, urlPath)) {
 				matchingPatterns.add(registeredPattern);
 			}
+			// 默认 false
 			else if (useTrailingSlashMatch()) {
 				if (!registeredPattern.endsWith("/") && getPathMatcher().match(registeredPattern + "/", urlPath)) {
 					matchingPatterns.add(registeredPattern + "/");
@@ -187,8 +203,12 @@ public abstract class AbstractUrlHandlerMapping extends AbstractHandlerMapping i
 		}
 
 		String bestMatch = null;
+		// 比较器 Spring MVC 对路径的写法分很多种  几种写法有互相重叠的路径的情况是存在的
+		// 多种匹配上的话 需要根据一种规则选出最优解
 		Comparator<String> patternComparator = getPathMatcher().getPatternComparator(urlPath);
+		// 如果有路径匹配上了
 		if (!matchingPatterns.isEmpty()) {
+			// 对选出的路径进行排序 选择最优解
 			matchingPatterns.sort(patternComparator);
 			if (logger.isTraceEnabled() && matchingPatterns.size() > 1) {
 				logger.trace("Matching patterns " + matchingPatterns);
@@ -196,11 +216,14 @@ public abstract class AbstractUrlHandlerMapping extends AbstractHandlerMapping i
 			bestMatch = matchingPatterns.get(0);
 		}
 		if (bestMatch != null) {
+			// 根据选出的最优解 得到对应的处理器
 			handler = this.handlerMap.get(bestMatch);
 			if (handler == null) {
+				// 去掉路径最后的 / 再来一次
 				if (bestMatch.endsWith("/")) {
 					handler = this.handlerMap.get(bestMatch.substring(0, bestMatch.length() - 1));
 				}
+				// 还是不行的话 只能抛异常
 				if (handler == null) {
 					throw new IllegalStateException(
 							"Could not find handler for best pattern match [" + bestMatch + "]");
@@ -216,11 +239,15 @@ public abstract class AbstractUrlHandlerMapping extends AbstractHandlerMapping i
 
 			// There might be multiple 'best patterns', let's make sure we have the correct URI template variables
 			// for all of them
+			// 处理路径中的变量
 			Map<String, String> uriTemplateVariables = new LinkedHashMap<>();
 			for (String matchingPattern : matchingPatterns) {
 				if (patternComparator.compare(bestMatch, matchingPattern) == 0) {
+					// 提取路径变量
 					Map<String, String> vars = getPathMatcher().extractUriTemplateVariables(matchingPattern, urlPath);
+					// 变量解码
 					Map<String, String> decodedVars = getUrlPathHelper().decodePathVariables(request, vars);
+					// 添加到路径变量结果中
 					uriTemplateVariables.putAll(decodedVars);
 				}
 			}

@@ -157,21 +157,25 @@ class ProceedTestingAspect implements Ordered {
 	public int getOrder() { return this.order; }
 
 	public Object capitalize(ProceedingJoinPoint pjp, String value) throws Throwable {
+		System.out.println("capitalize");
 		return pjp.proceed(new Object[] {value.toUpperCase()});
 	}
 
 	public Object doubleOrQuits(ProceedingJoinPoint pjp) throws Throwable {
+		System.out.println("doubleOrQuits");
 		int value = ((Integer) pjp.getArgs()[0]).intValue();
 		pjp.getArgs()[0] = new Integer(value * 2);
 		return pjp.proceed();
 	}
 
 	public Object addOne(ProceedingJoinPoint pjp, Float value) throws Throwable {
+		System.out.println("addOne");
 		float fv = value.floatValue();
 		return pjp.proceed(new Object[] {new Float(fv + 1.0F)});
 	}
 
 	public void captureStringArgument(JoinPoint tjp, String arg) {
+		System.out.println("captureStringArgument");
 		if (!tjp.getArgs()[0].equals(arg)) {
 			throw new IllegalStateException(
 					"argument is '" + arg + "', " +
@@ -182,6 +186,7 @@ class ProceedTestingAspect implements Ordered {
 	}
 
 	public Object captureStringArgumentInAround(ProceedingJoinPoint pjp, String arg) throws Throwable {
+		System.out.println("captureStringArgumentInAround");
 		if (!pjp.getArgs()[0].equals(arg)) {
 			throw new IllegalStateException(
 					"argument is '" + arg + "', " +
@@ -192,6 +197,7 @@ class ProceedTestingAspect implements Ordered {
 	}
 
 	public void captureFloatArgument(JoinPoint tjp, float arg) {
+		System.out.println("captureFloatArgument");
 		float tjpArg = ((Float) tjp.getArgs()[0]).floatValue();
 		if (Math.abs(tjpArg - arg) > 0.000001) {
 			throw new IllegalStateException(

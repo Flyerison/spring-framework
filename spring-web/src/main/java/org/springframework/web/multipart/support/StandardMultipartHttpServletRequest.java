@@ -82,9 +82,10 @@ public class StandardMultipartHttpServletRequest extends AbstractMultipartHttpSe
 	 */
 	public StandardMultipartHttpServletRequest(HttpServletRequest request, boolean lazyParsing)
 			throws MultipartException {
-
+		// HttpServletRequest 的增强处理
 		super(request);
 		if (!lazyParsing) {
+			// 解析请求
 			parseRequest(request);
 		}
 	}
@@ -93,19 +94,28 @@ public class StandardMultipartHttpServletRequest extends AbstractMultipartHttpSe
 	private void parseRequest(HttpServletRequest request) {
 		try {
 			Collection<Part> parts = request.getParts();
+			// 参数名称集合
 			this.multipartParameterNames = new LinkedHashSet<>(parts.size());
+			// 存文件
 			MultiValueMap<String, MultipartFile> files = new LinkedMultiValueMap<>(parts.size());
 			for (Part part : parts) {
+				// 获取块的 content-disposition 请求头
 				String headerValue = part.getHeader(HttpHeaders.CONTENT_DISPOSITION);
+				// 解析类型
 				ContentDisposition disposition = ContentDisposition.parse(headerValue);
+				// 获取文件名
 				String filename = disposition.getFilename();
 				if (filename != null) {
+					// 进一步解析文件名
 					if (filename.startsWith("=?") && filename.endsWith("?=")) {
 						filename = MimeDelegate.decode(filename);
 					}
+					// 文件添加到Map中
 					files.add(part.getName(), new StandardMultipartFile(part, filename));
 				}
 				else {
+					// 不是文件类型的块请求的话 就将参数名放到集合去
+					// 注意的是 仅仅将参数名传了进去 没有对值做什么处理
 					this.multipartParameterNames.add(part.getName());
 				}
 			}

@@ -57,6 +57,7 @@ import org.springframework.web.multipart.MultipartResolver;
  * @see #setResolveLazily
  * @see HttpServletRequest#getParts()
  * @see org.springframework.web.multipart.commons.CommonsMultipartResolver
+ * 默认的多块请求解析器
  */
 public class StandardServletMultipartResolver implements MultipartResolver {
 
@@ -77,16 +78,20 @@ public class StandardServletMultipartResolver implements MultipartResolver {
 	}
 
 
+	// 判断请求是否是多块请求
 	@Override
 	public boolean isMultipart(HttpServletRequest request) {
+		// 直接判断请求头的 contentType
 		return StringUtils.startsWithIgnoreCase(request.getContentType(), "multipart/");
 	}
 
 	@Override
 	public MultipartHttpServletRequest resolveMultipart(HttpServletRequest request) throws MultipartException {
+		// 封装的对象
 		return new StandardMultipartHttpServletRequest(request, this.resolveLazily);
 	}
 
+	// 清空下多块请求的文件
 	@Override
 	public void cleanupMultipart(MultipartHttpServletRequest request) {
 		if (!(request instanceof AbstractMultipartHttpServletRequest) ||
@@ -96,6 +101,7 @@ public class StandardServletMultipartResolver implements MultipartResolver {
 			try {
 				for (Part part : request.getParts()) {
 					if (request.getFile(part.getName()) != null) {
+						// 删除文件 清理资源
 						part.delete();
 					}
 				}

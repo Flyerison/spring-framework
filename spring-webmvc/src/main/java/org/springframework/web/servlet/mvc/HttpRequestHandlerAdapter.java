@@ -37,6 +37,8 @@ import org.springframework.web.servlet.ModelAndView;
  * @see org.springframework.web.HttpRequestHandler
  * @see LastModified
  * @see SimpleControllerHandlerAdapter
+ * 处理 HttpRequestHandler
+ * 多处理静态资源  ResourceHttpRequestHandler
  */
 public class HttpRequestHandlerAdapter implements HandlerAdapter {
 
@@ -50,6 +52,7 @@ public class HttpRequestHandlerAdapter implements HandlerAdapter {
 	public ModelAndView handle(HttpServletRequest request, HttpServletResponse response, Object handler)
 			throws Exception {
 
+		// 直接执行
 		((HttpRequestHandler) handler).handleRequest(request, response);
 		return null;
 	}

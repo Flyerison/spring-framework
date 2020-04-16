@@ -427,6 +427,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 			throws BeansException {
 
 		Object result = existingBean;
+		// 遍历后置处理器  在资源加载过程上准备好了
 		for (BeanPostProcessor processor : getBeanPostProcessors()) {
 			Object current = processor.postProcessAfterInitialization(result, beanName);
 			if (current == null) {
@@ -1861,7 +1862,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 			}, getAccessControlContext());
 		}
 		else {
-			// ware 接口
+			// ware 接口相关
 			invokeAwareMethods(beanName, bean);
 		}
 
@@ -1877,9 +1878,10 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		catch (Throwable ex) {
 			throw new BeanCreationException(
 					(mbd != null ? mbd.getResourceDescription() : null),
-					beanName, "Invocation of init method failed", ex);
+					beanName, "Invocation of init method  failed", ex);
 		}
 		if (mbd == null || !mbd.isSynthetic()) {
+			// 一个后置处理器 AOP 会在这里实现
 			wrappedBean = applyBeanPostProcessorsAfterInitialization(wrappedBean, beanName);
 		}
 

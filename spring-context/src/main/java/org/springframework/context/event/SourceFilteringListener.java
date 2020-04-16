@@ -69,6 +69,7 @@ public class SourceFilteringListener implements GenericApplicationListener, Smar
 
 	@Override
 	public void onApplicationEvent(ApplicationEvent event) {
+		// 如果时间来源就是 原始的source 进行监听
 		if (event.getSource() == this.source) {
 			onApplicationEventInternal(event);
 		}
@@ -106,6 +107,7 @@ public class SourceFilteringListener implements GenericApplicationListener, Smar
 			throw new IllegalStateException(
 					"Must specify a delegate object or override the onApplicationEventInternal method");
 		}
+		// 让代理去做实际功能
 		this.delegate.onApplicationEvent(event);
 	}
 

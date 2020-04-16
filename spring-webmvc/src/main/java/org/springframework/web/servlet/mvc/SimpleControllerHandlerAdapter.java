@@ -36,6 +36,8 @@ import org.springframework.web.servlet.ModelAndView;
  * @see Controller
  * @see LastModified
  * @see HttpRequestHandlerAdapter
+ * Controller 适配器
+ * 使用场景为需要通过请求路径直接返回某一视图的情况
  */
 public class SimpleControllerHandlerAdapter implements HandlerAdapter {
 

@@ -325,8 +325,10 @@ public abstract class AbstractHandlerMethodMapping<T> extends AbstractHandlerMap
 	 * @return the created HandlerMethod
 	 */
 	protected HandlerMethod createHandlerMethod(Object handler, Method method) {
+		// 如果是 String 则为 BeanName
 		if (handler instanceof String) {
 			return new HandlerMethod((String) handler,
+					// 传入 BeanFactory 将 BeanName 解析成相应的实例
 					obtainApplicationContext().getAutowireCapableBeanFactory(), method);
 		}
 		return new HandlerMethod(handler, method);
@@ -357,13 +359,16 @@ public abstract class AbstractHandlerMethodMapping<T> extends AbstractHandlerMap
 
 	/**
 	 * Look up a handler method for the given request.
+	 * 返回的就是处理器方法类型 就是声明了Controller的Bean实例和RequestMapping注解的方法
 	 */
 	@Override
-	protected HandlerMethod getHandlerInternal(HttpServletRequest request) throws Exception {
+	protected HandlerMethod getHandlerInternal(HttpServletRequest request) throws Exception  {
 		String lookupPath = getUrlPathHelper().getLookupPathForRequest(request);
 		request.setAttribute(LOOKUP_PATH, lookupPath);
+		// 获取读锁
 		this.mappingRegistry.acquireReadLock();
 		try {
+			// 查找处理器方法
 			HandlerMethod handlerMethod = lookupHandlerMethod(lookupPath, request);
 			return (handlerMethod != null ? handlerMethod.createWithResolvedBean() : null);
 		}
@@ -380,20 +385,24 @@ public abstract class AbstractHandlerMethodMapping<T> extends AbstractHandlerMap
 	 * @return the best-matching handler method, or {@code null} if no match
 	 * @see #handleMatch(Object, String, HttpServletRequest)
 	 * @see #handleNoMatch(Set, String, HttpServletRequest)
+	 * 查找与当前请求最佳匹配的处理器方法
 	 */
 	@Nullable
 	protected HandlerMethod lookupHandlerMethod(String lookupPath, HttpServletRequest request) throws Exception {
 		List<Match> matches = new ArrayList<>();
 		List<T> directPathMatches = this.mappingRegistry.getMappingsByUrl(lookupPath);
 		if (directPathMatches != null) {
+			// 调用匹配方法 将成功的加到matches上
 			addMatchingMappings(directPathMatches, matches, request);
 		}
 		if (matches.isEmpty()) {
 			// No choice but to go through all mappings...
+			// 如果没有匹配上的 就全部遍历一次
 			addMatchingMappings(this.mappingRegistry.getMappings().keySet(), matches, request);
 		}
 
 		if (!matches.isEmpty()) {
+			// 比较器 用于得到最佳处理器
 			Comparator<Match> comparator = new MatchComparator(getMappingComparator(request));
 			matches.sort(comparator);
 			Match bestMatch = matches.get(0);
@@ -401,10 +410,13 @@ public abstract class AbstractHandlerMethodMapping<T> extends AbstractHandlerMap
 				if (logger.isTraceEnabled()) {
 					logger.trace(matches.size() + " matching mappings: " + matches);
 				}
+				// CORS 预检请求 直接return
 				if (CorsUtils.isPreFlightRequest(request)) {
 					return PREFLIGHT_AMBIGUOUS_MATCH;
 				}
+				// 非预检请求再获取第二个最佳
 				Match secondBestMatch = matches.get(1);
+				// 俩最佳一样 就一次
 				if (comparator.compare(bestMatch, secondBestMatch) == 0) {
 					Method m1 = bestMatch.handlerMethod.getMethod();
 					Method m2 = secondBestMatch.handlerMethod.getMethod();
@@ -413,17 +425,22 @@ public abstract class AbstractHandlerMethodMapping<T> extends AbstractHandlerMap
 							"Ambiguous handler methods mapped for '" + uri + "': {" + m1 + ", " + m2 + "}");
 				}
 			}
+
 			request.setAttribute(BEST_MATCHING_HANDLER_ATTRIBUTE, bestMatch.handlerMethod);
+			// 执行处理匹配方法
 			handleMatch(bestMatch.mapping, lookupPath, request);
 			return bestMatch.handlerMethod;
 		}
 		else {
+			// 如果没有匹配结果 执行无处理器匹配方式
 			return handleNoMatch(this.mappingRegistry.getMappings().keySet(), lookupPath, request);
 		}
 	}
 
+	// 遍历参数中映射信息列表 获取匹配到的信息与处理器方法 添加到结果列表中
 	private void addMatchingMappings(Collection<T> mappings, List<Match> matches, HttpServletRequest request) {
 		for (T mapping : mappings) {
+			//获取与请求匹配的映射
 			T match = getMatchingMapping(mapping, request);
 			if (match != null) {
 				matches.add(new Match(match, this.mappingRegistry.getMappings().get(mapping)));
@@ -529,16 +546,23 @@ public abstract class AbstractHandlerMethodMapping<T> extends AbstractHandlerMap
 	 */
 	class MappingRegistry {
 
+		// 映射注册表 保存映射注册信息
+		// MappingRegistration 包含映射信息 对应的处理器方法 直接路径 映射名 4个信息
 		private final Map<T, MappingRegistration<T>> registry = new HashMap<>();
 
+		// 映射查找表 保存全部映射信息与对应的处理器方法的map
 		private final Map<T, HandlerMethod> mappingLookup = new LinkedHashMap<>();
 
+		// URL查找表 直接路径查找表 用于保存直接路径对应的映射信息列表 key是直接路径 value是映射信息列表
 		private final MultiValueMap<String, T> urlLookup = new LinkedMultiValueMap<>();
 
+		// name查找表 保存映射名对应的处理器方法列表
 		private final Map<String, List<HandlerMethod>> nameLookup = new ConcurrentHashMap<>();
 
+		// CORS查找表 保存处理器方法对应的 CORS 跨域配置
 		private final Map<HandlerMethod, CorsConfiguration> corsLookup = new ConcurrentHashMap<>();
 
+		// 读写锁
 		private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock();
 
 		/**
@@ -595,26 +619,35 @@ public abstract class AbstractHandlerMethodMapping<T> extends AbstractHandlerMap
 			}
 			this.readWriteLock.writeLock().lock();
 			try {
+				// 将两个封装成一个
 				HandlerMethod handlerMethod = createHandlerMethod(handler, method);
+				// 判断处理器方法是否唯一  防止相同映射信息对应多个不同的处理器方法 导致查找处理器方法时无法找到唯一最优解
 				validateMethodMapping(handlerMethod, mapping);
+				// 注册信息
 				this.mappingLookup.put(mapping, handlerMethod);
 
+				// 获取当前注册的映射信息包含的直接路径列表
 				List<String> directUrls = getDirectUrls(mapping);
 				for (String url : directUrls) {
+					// 注册
 					this.urlLookup.add(url, mapping);
 				}
 
 				String name = null;
+				// 命名策略不为空
 				if (getNamingStrategy() != null) {
 					name = getNamingStrategy().getName(handlerMethod, mapping);
+					// 注册
 					addMappingName(name, handlerMethod);
 				}
 
+				// 获取处理器方法对应的 CORS配置
 				CorsConfiguration corsConfig = initCorsConfiguration(handler, method, mapping);
 				if (corsConfig != null) {
 					this.corsLookup.put(handlerMethod, corsConfig);
 				}
 
+				// 注册
 				this.registry.put(mapping, new MappingRegistration<>(mapping, handlerMethod, directUrls, name));
 			}
 			finally {
@@ -635,7 +668,9 @@ public abstract class AbstractHandlerMethodMapping<T> extends AbstractHandlerMap
 
 		private List<String> getDirectUrls(T mapping) {
 			List<String> urls = new ArrayList<>(1);
+			// 获取该映射信息中的全部路径模式
 			for (String path : getMappingPathPatterns(mapping)) {
+				// 只添加非模式串的路径
 				if (!getPathMatcher().isPattern(path)) {
 					urls.add(path);
 				}

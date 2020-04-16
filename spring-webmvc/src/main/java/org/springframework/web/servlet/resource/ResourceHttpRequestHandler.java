@@ -482,28 +482,34 @@ public class ResourceHttpRequestHandler extends WebContentGenerator
 			throws ServletException, IOException {
 
 		// For very general mappings (e.g. "/") we need to check 404 first
+		// 去获取资源
 		Resource resource = getResource(request);
+		// 空就返回 404
 		if (resource == null) {
 			logger.debug("Resource not found");
 			response.sendError(HttpServletResponse.SC_NOT_FOUND);
 			return;
 		}
 
+		// 如果是 跨域 OPTIONS 预检请求 返回允许
 		if (HttpMethod.OPTIONS.matches(request.getMethod())) {
 			response.setHeader("Allow", getAllowHeader());
 			return;
 		}
 
 		// Supported methods and required session
+		// 检查是否支持此请求
 		checkRequest(request);
 
 		// Header phase
+		// 检查资源缓存 如果未修改 直接304
 		if (new ServletWebRequest(request, response).checkNotModified(resource.lastModified())) {
 			logger.trace("Resource not modified");
 			return;
 		}
 
 		// Apply cache settings, if any
+		// 写入缓存策略相关的响应头
 		prepareResponse(response);
 
 		// Check the media type for the resource
@@ -515,19 +521,26 @@ public class ResourceHttpRequestHandler extends WebContentGenerator
 			return;
 		}
 
+		// 构造一个用于输出的响应包装类
 		ServletServerHttpResponse outputMessage = new ServletServerHttpResponse(response);
+		// 如果请求头包含 Range 表示请求内容为静态资源的一部分 Range 表示这一部分的开始与结束 用于支持断点续传
 		if (request.getHeader(HttpHeaders.RANGE) == null) {
 			Assert.state(this.resourceHttpMessageConverter != null, "Not initialized");
 			setHeaders(response, resource, mediaType);
+			// 不包含Range 就直接返回资源
 			this.resourceHttpMessageConverter.write(resource, mediaType, outputMessage);
 		}
 		else {
 			Assert.state(this.resourceRegionHttpMessageConverter != null, "Not initialized");
+			// 设置响应头表示 Range 返回 单位为字节
 			response.setHeader(HttpHeaders.ACCEPT_RANGES, "bytes");
+			// 通过请求生成输入请求类型
 			ServletServerHttpRequest inputMessage = new ServletServerHttpRequest(request);
 			try {
 				List<HttpRange> httpRanges = inputMessage.getHeaders().getRange();
+				// 设置状态吗 206 表示一部分响应
 				response.setStatus(HttpServletResponse.SC_PARTIAL_CONTENT);
+				// 通过资源区块消息转换器把资源指定区域的数据流写入响应题
 				this.resourceRegionHttpMessageConverter.write(
 						HttpRange.toResourceRegions(httpRanges, resource), mediaType, outputMessage);
 			}

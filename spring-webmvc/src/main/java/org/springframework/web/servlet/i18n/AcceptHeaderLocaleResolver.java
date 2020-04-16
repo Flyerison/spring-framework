@@ -41,6 +41,7 @@ import org.springframework.web.servlet.LocaleResolver;
  * @since 27.02.2003
  * @see javax.servlet.http.HttpServletRequest#getLocale()
  */
+// 默认的本地化解析器
 public class AcceptHeaderLocaleResolver implements LocaleResolver {
 
 	private final List<Locale> supportedLocales = new ArrayList<>(4);
@@ -94,11 +95,14 @@ public class AcceptHeaderLocaleResolver implements LocaleResolver {
 
 	@Override
 	public Locale resolveLocale(HttpServletRequest request) {
+		// 获取本实例配置的默认 locale 可通过 spring.mvc.locale 配置 默认为空
 		Locale defaultLocale = getDefaultLocale();
 		if (defaultLocale != null && request.getHeader("Accept-Language") == null) {
 			return defaultLocale;
 		}
+		// 解析 Accept-Language 请求头的信息 为 Tomcat 内部实现
 		Locale requestLocale = request.getLocale();
+		// 获取支持的本地化
 		List<Locale> supportedLocales = getSupportedLocales();
 		if (supportedLocales.isEmpty() || supportedLocales.contains(requestLocale)) {
 			return requestLocale;

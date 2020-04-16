@@ -294,8 +294,11 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
 	@Override
 	public Object postProcessAfterInitialization(@Nullable Object bean, String beanName) {
 		if (bean != null) {
+			// 名称的判断  普通的还是beanName
 			Object cacheKey = getCacheKey(bean.getClass(), beanName);
+			// 这一步没怎么看懂
 			if (this.earlyProxyReferences.remove(cacheKey) != bean) {
+				// 为 Bean 生成代理对象
 				return wrapIfNecessary(bean, beanName, cacheKey);
 			}
 		}
@@ -326,6 +329,7 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
 
 	/**
 	 * Wrap the given bean if necessary, i.e. if it is eligible for being proxied.
+	 * 这里Wrap的意思是代理 采用不同的代理模式 创建一个代理类
 	 * @param bean the raw bean instance
 	 * @param beanName the name of the bean
 	 * @param cacheKey the cache key for metadata access
@@ -338,18 +342,27 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
 		if (Boolean.FALSE.equals(this.advisedBeans.get(cacheKey))) {
 			return bean;
 		}
+		// isInfrastructureClass 判断是否是一些 Advice PointCut Advisor的接口实现类
+		// shouldSkip 默认false
 		if (isInfrastructureClass(bean.getClass()) || shouldSkip(bean.getClass(), beanName)) {
+			// 加下缓存
 			this.advisedBeans.put(cacheKey, Boolean.FALSE);
 			return bean;
 		}
 
 		// Create proxy if we have advice.
+		// 为目标 查找 合适的通知器
 		Object[] specificInterceptors = getAdvicesAndAdvisorsForBean(bean.getClass(), beanName, null);
 		if (specificInterceptors != DO_NOT_PROXY) {
 			this.advisedBeans.put(cacheKey, Boolean.TRUE);
+			// 创建代理
 			Object proxy = createProxy(
 					bean.getClass(), beanName, specificInterceptors, new SingletonTargetSource(bean));
 			this.proxyTypes.put(cacheKey, proxy.getClass());
+			/**
+			 * 返回代理对象 此时IOC容器输入bean
+			 * beanName对应的bean是代理对象 而非 原始对象
+			 */
 			return proxy;
 		}
 
@@ -449,15 +462,24 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
 		ProxyFactory proxyFactory = new ProxyFactory();
 		proxyFactory.copyFrom(this);
 
+		/**
+		 * 默认配置下，或用户显式配置 proxy-target-class = "false" 时，
+		 * 这里的 proxyFactory.isProxyTargetClass() 也为 false
+		 */
 		if (!proxyFactory.isProxyTargetClass()) {
 			if (shouldProxyTargetClass(beanClass, beanName)) {
 				proxyFactory.setProxyTargetClass(true);
 			}
 			else {
+				/**
+				 * 检测 beanClass 是否实现了接口，若未实现，则将
+				 * proxyFactory 的成员变量 proxyTargetClass 设为 true
+				 */
 				evaluateProxyInterfaces(beanClass, proxyFactory);
 			}
 		}
 
+		// specificInterceptors 中若包含有 Advice，此处将 Advice 转为 Advisor
 		Advisor[] advisors = buildAdvisors(beanName, specificInterceptors);
 		proxyFactory.addAdvisors(advisors);
 		proxyFactory.setTargetSource(targetSource);
