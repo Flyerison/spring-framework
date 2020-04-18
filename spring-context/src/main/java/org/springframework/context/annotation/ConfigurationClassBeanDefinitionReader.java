@@ -137,14 +137,22 @@ class ConfigurationClassBeanDefinitionReader {
 			return;
 		}
 
+		// 判断是否还是被 @Import 导入的
 		if (configClass.isImported()) {
+			// 这个时候 BeanDefinitionMap 是没有 @Import 导入的类信息的
+			// 而这个方法就是让其加上
 			registerBeanDefinitionForImportedConfigurationClass(configClass);
 		}
+
+		// 内部有没有 @Bean 修饰的方法
 		for (BeanMethod beanMethod : configClass.getBeanMethods()) {
+			// 跟上面一样
 			loadBeanDefinitionsForBeanMethod(beanMethod);
 		}
 
+		// 是否是 @ImportedResources 导入的
 		loadBeanDefinitionsFromImportedResources(configClass.getImportedResources());
+		// BeanDefinitionRegist 方式导入的
 		loadBeanDefinitionsFromRegistrars(configClass.getImportBeanDefinitionRegistrars());
 	}
 
@@ -162,6 +170,8 @@ class ConfigurationClassBeanDefinitionReader {
 
 		BeanDefinitionHolder definitionHolder = new BeanDefinitionHolder(configBeanDef, configBeanName);
 		definitionHolder = AnnotationConfigUtils.applyScopedProxyMode(scopeMetadata, definitionHolder, this.registry);
+
+		// 注册到 BeanDefinition
 		this.registry.registerBeanDefinition(definitionHolder.getBeanName(), definitionHolder.getBeanDefinition());
 		configClass.setBeanName(configBeanName);
 
@@ -193,6 +203,7 @@ class ConfigurationClassBeanDefinitionReader {
 		Assert.state(bean != null, "No @Bean annotation attributes");
 
 		// Consider name and any aliases
+		// 别名操作
 		List<String> names = new ArrayList<>(Arrays.asList(bean.getStringArray("name")));
 		String beanName = (!names.isEmpty() ? names.remove(0) : methodName);
 
@@ -251,6 +262,7 @@ class ConfigurationClassBeanDefinitionReader {
 			beanDef.setAutowireCandidate(false);
 		}
 
+		// 设置初始化和销毁方法
 		String initMethodName = bean.getString("initMethod");
 		if (StringUtils.hasText(initMethodName)) {
 			beanDef.setInitMethodName(initMethodName);

@@ -60,7 +60,7 @@ public class AnnotationConfigApplicationContext extends GenericApplicationContex
 
 
 	/**
-	 * reader和scanner用法较少 可忽略
+	 * reader和scanner 注解BeanDefinition读取器和类路径扫描器
 	 * Create a new AnnotationConfigApplicationContext that needs to be populated
 	 * through {@link #register} calls and then manually {@linkplain #refresh refreshed}.
 	 */
@@ -89,6 +89,7 @@ public class AnnotationConfigApplicationContext extends GenericApplicationContex
 		// 进行调用无参构造方法 并首先调用父类的无参构造方法！会创建beanFactory
 		this();
 		// 注册配置类 比如scan路径 会优先将类加载到BeanDefine中
+		// 将项目自己的Config信息添加到Spring容器中 实现定制化
 		register(componentClasses);
 		refresh();
 	}

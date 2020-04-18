@@ -132,6 +132,7 @@ public class SimpleApplicationEventMulticaster extends AbstractApplicationEventM
 		ResolvableType type = (eventType != null ? eventType : resolveDefaultEventType(event));
 		Executor executor = getTaskExecutor();
 		for (ApplicationListener<?> listener : getApplicationListeners(event, type)) {
+			// 能否支持异步发送
 			if (executor != null) {
 				executor.execute(() -> invokeListener(listener, event));
 			}
@@ -169,6 +170,7 @@ public class SimpleApplicationEventMulticaster extends AbstractApplicationEventM
 	@SuppressWarnings({"rawtypes", "unchecked"})
 	private void doInvokeListener(ApplicationListener listener, ApplicationEvent event) {
 		try {
+			// 正式调用处理逻辑 也是自己重载的方法体
 			listener.onApplicationEvent(event);
 		}
 		catch (ClassCastException ex) {
